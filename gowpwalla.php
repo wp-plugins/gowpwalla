@@ -4,13 +4,17 @@ Plugin Name: GoWPWalla - A Gowalla Widget
 Plugin URI:  https://sourceforge.net/projects/gowpwalla/
 Description: Adds a sidebar widgets to show gowalla status
 Author: Scott Kahler
-Version: 1.0.1
+Version: 1.0.2
 Author URI: http://www.simpit.com
 */
 
 /*
 Changes:
-1.0 - Original
+1.0.1 - Original
+1.0.2 - Adding Application Icon
+      - Adding some customizable fields for list lengths
+      - Making Large Icon Recent Spots and Compact Icon Recent Spots
+      - Adding a Location Widget
 */
 
 
@@ -23,8 +27,7 @@ function gowpwalla_widget_init() {
 	if ( !function_exists('register_sidebar_widget') )
 		return;
 
-	// This is the function that outputs our little Google search form.
-	function gowpwalla_widget_recent($args) {
+	function gowpwalla_widget_recent_large($args) {
 		
 		extract($args);
 		
@@ -32,8 +35,9 @@ function gowpwalla_widget_init() {
 			echo $before_widget.$widgettitle.$options['cache'].$after_widget;
 		}
 		else {
+                        $large_list_length = get_option('gowpwalla_recent_list_large_length');
        	                $gowalla_username =  get_option('gowalla_username');
-			$json_object = gowpwalla_get_json("http://api.gowalla.com/users/$gowalla_username/stamps?limit=5");
+			$json_object = gowpwalla_get_json("http://api.gowalla.com/users/$gowalla_username/stamps?limit=$large_list_length");
 	
 			echo '<div class="widget"><h2 class="hl">Recent Gowalla Spots</h2><ul>';
 			foreach($json_object->stamps as $stamp) {
@@ -47,6 +51,105 @@ function gowpwalla_widget_init() {
          		echo '</ul></div>'; 
 		}
 	}
+
+	function gowpwalla_widget_recent_compact($args) {
+		
+		extract($args);
+		
+		if(time() - $cachetime < $lastcheck AND $options['cache'] != "") {
+			echo $before_widget.$widgettitle.$options['cache'].$after_widget;
+		}
+		else {
+                        $compact_list_length = get_option('gowpwalla_recent_list_compact_length');
+       	                $gowalla_username =  get_option('gowalla_username');
+			$json_object = gowpwalla_get_json("http://api.gowalla.com/users/$gowalla_username/stamps?limit=$compact_list_length");
+	
+			echo '<div class="widget"><h2 class="hl">Recent Gowalla Spots</h2><ul>';
+			foreach($json_object->stamps as $stamp) {
+                       		$spot_name = $stamp->spot->name;
+				$spot_image_url = $stamp->spot->image_url;
+				$spot_url = 'http://www.gowalla.com' . $stamp->spot->url;
+				echo '<li><a href="' .$spot_url . '"><img border="0" width="25" height="25" src="' . 
+					$spot_image_url . '"/></a> <a href="' . $spot_url . '">' . 
+					$spot_name . '</a></li>';
+			}
+         		echo '</ul></div>'; 
+		}
+	}
+
+	function gowpwalla_widget_location($args) {
+		
+		extract($args);
+                $gowalla_url = 'http://www.gowalla.com';
+		
+		if(time() - $cachetime < $lastcheck AND $options['cache'] != "") {
+			echo $before_widget.$widgettitle.$options['cache'].$after_widget;
+		}
+		else {
+                        $location_id = get_option('gowpwalla_location_id');
+       	                $gowalla_username =  get_option('gowalla_username');
+			$json_object = gowpwalla_get_json("http://api.gowalla.com/spots/$location_id");
+	
+                        $website 	= $json_object->websites;
+  			$checkin_count	= $json_object->checkins_count;
+			$image_url	= $json_object->image_url;
+			$location_url	= $gowalla_url . $json_object->url;
+                        $description	= $json_object->description;
+			$items_url	= $gowalla_url . $json_object->items_url;
+			$items_count	= $json_object->items_count;
+                        $name		= $json_object->name;
+
+			$json_object2 = gowpwalla_get_json("$items_url");
+
+			echo '<div class="widget"><h2 class="hl">' . $name . '</h2>';
+                        echo '<ul>';
+			echo '<li><a href="' .$location_url . '"><img border="0" width="100" height="100" src="' .  $image_url . '"/></a></li>'; 
+			echo "\r\n";
+			echo '<li>Description: ' . $description . '</li>';
+			echo "\r\n";
+
+			echo '<li><p class="name">Recent Checkins:</p>';
+			echo "\r\n";
+			echo '<p class="name">';
+			echo "\r\n";
+			foreach($json_object->last_checkins as $checkin_user) {
+                        	echo '<a href="' . $gowalla_url . $checkin_user->user->url . '"><img border="0" width="25" height="25" src="' . $checkin_user->user->image_url . '" title="' .
+					$checkin_user->user->first_name . ' ' . $checkin_user->user->last_name . '"></a>';
+				echo "\r\n";
+			}
+			echo '<p class="name">Total: <a href="' . $location_url . '">' .  $checkin_count . '</a> </p>';
+			echo "\r\n";
+			echo '</p></li>';
+			echo "\r\n";
+
+			echo '<li><p class="name">Frequenters:</p>';
+			echo "\r\n";
+			echo '<p class="name">';
+			echo "\r\n";
+			foreach($json_object->top_10 as $user) {
+                        	echo '<a href="' . $gowalla_url . $user->url . '"><img border="0" width="25" height="25" src="' . $user->image_url . '" title="' .
+					$user->first_name . ' ' . $user->last_name . ' : ' . $user->checkins_count . ' Checkins"></a>';
+				echo "\r\n";
+			}
+			echo '</p></li>';
+
+			echo '<li><p class="name">Items</p>';
+			echo "\r\n";
+			echo '<p class="name">';
+			echo "\r\n";
+			foreach($json_object2->items as $item) {
+                        	echo '<a href="' . $gowalla_url . $item->url . '"><img border="0" width="25" height="25" src="' . $item->image_url . '" title="' .
+					$item->name . '"></a>';
+				echo "\r\n";
+			}
+			echo '</p></li>';
+
+			echo "\r\n";
+                        echo "</ul></div>";
+		}
+	}
+
+
 
 	function gowpwalla_widget_myinfo($args) {
 		
@@ -98,7 +201,9 @@ function gowpwalla_widget_init() {
 
 	// This registers our widget so it appears with the other available
 	// widgets and can be dragged and dropped into any active sidebars.
-	register_sidebar_widget(array('GoWPWalla Recent Spots', 'widgets'), 'gowpwalla_widget_recent');
+	register_sidebar_widget(array('GoWPWalla Recent Spots (Large)', 'widgets'), 'gowpwalla_widget_recent_large');
+	register_sidebar_widget(array('GoWPWalla Recent Spots (Compact)', 'widgets'), 'gowpwalla_widget_recent_compact');
+	register_sidebar_widget(array('GoWPWalla Location', 'widgets'), 'gowpwalla_widget_location');
 	register_sidebar_widget(array('GoWPWalla MyInfo', 'widgets'), 'gowpwalla_widget_myinfo');
 
 }
@@ -147,6 +252,9 @@ function gowpwalla_register_settings() {
 	register_setting( 'gowpwalla-settings-group', 'gowalla_username' );
 	register_setting( 'gowpwalla-settings-group', 'gowalla_password' );
 	register_setting( 'gowpwalla-settings-group', 'gowalla_api_key' );
+	register_setting( 'gowpwalla-settings-group', 'gowpwalla_recent_list_large_length' );
+	register_setting( 'gowpwalla-settings-group', 'gowpwalla_recent_list_compact_length' );
+	register_setting( 'gowpwalla-settings-group', 'gowpwalla_location_id' );
 }
 
 function gowpwalla_settings_page() {
@@ -169,7 +277,23 @@ function gowpwalla_settings_page() {
         
         	<tr valign="top">
         	<th scope="row">Gowalla API Key</th>
-        	<td><input type="text" name="gowalla_api_key" value="<?php echo get_option('gowalla_api_key'); ?>" /></td>
+        	<td><input type="text" name="gowalla_api_key" value="<?php echo get_option('gowalla_api_key'); ?>" /><br/>
+                     Sign up for your Gowalla API key at <a href="http://gowalla.com/api/keys">http://gowalla.com/api/keys</a></td>
+        	</tr>
+
+        	<tr valign="top">
+        	<th scope="row"># in Large Recent Places</th>
+        	<td><input type="text" name="gowpwalla_recent_list_large_length" value="<?php echo get_option('gowpwalla_recent_list_large_length'); ?>" /></td>
+        	</tr>
+
+        	<tr valign="top">
+        	<th scope="row"># in Compact Recent Places</th>
+        	<td><input type="text" name="gowpwalla_recent_list_compact_length" value="<?php echo get_option('gowpwalla_recent_list_compact_length'); ?>" /></td>
+        	</tr>
+
+        	<tr valign="top">
+        	<th scope="row">Location ID for Location widget</th>
+        	<td><input type="text" name="gowpwalla_location_id" value="<?php echo get_option('gowpwalla_location_id'); ?>" /></td>
         	</tr>
     	</table>
     

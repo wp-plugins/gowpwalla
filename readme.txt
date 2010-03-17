@@ -18,3 +18,8 @@ Add Installation Instructions
 
 = 1.0.1 =
 * Initial Release
+= 1.0.2 =
+* Adding Application Icon
+* Adding some customizable fields for list lengths
+* Making Large Icon Recent Spots and Compact Icon Recent Spots
+* Adding a Location Widget
